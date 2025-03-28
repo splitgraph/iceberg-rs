@@ -37,6 +37,7 @@ fn configuration(host: &str, port: u16) -> Configuration {
         bearer_access_token: None,
         api_key: None,
         aws_v4_key: None,
+        x_iceberg_access_delegation: None,
     }
 }
 
