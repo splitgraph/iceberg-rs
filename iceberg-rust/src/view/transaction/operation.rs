@@ -37,7 +37,7 @@ pub enum Operation {
 
 // Tries to preserve dialect order
 fn upsert_representation(
-    current_representations: &Vec<ViewRepresentation>,
+    current_representations: &[ViewRepresentation],
     new_representation: ViewRepresentation,
 ) -> Vec<ViewRepresentation> {
     let ViewRepresentation::Sql {
@@ -57,7 +57,6 @@ fn upsert_representation(
                 }
             },
         )
-        .map(|v| v.clone())
         .collect();
     if !updated {
         representations.push(new_representation);
