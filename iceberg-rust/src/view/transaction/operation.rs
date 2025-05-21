@@ -47,13 +47,13 @@ fn upsert_representation(
     let mut updated = false;
     let mut representations: Vec<ViewRepresentation> = current_representations
         .iter()
-        .filter_map(
+        .map(
             |current_representation @ ViewRepresentation::Sql { dialect, .. }| {
                 if dialect == new_dialect {
                     updated = true;
-                    Some(new_representation.clone())
+                    new_representation.clone()
                 } else {
-                    Some(current_representation.clone())
+                    current_representation.clone()
                 }
             },
         )
