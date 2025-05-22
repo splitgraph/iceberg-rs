@@ -30,11 +30,11 @@ impl<'view> Transaction<'view> {
     /// Update the schmema of the view
     pub fn update_representation(
         mut self,
-        representation: ViewRepresentation,
+        representations: Vec<ViewRepresentation>,
         schema: StructType,
     ) -> Self {
-        self.operations.push(ViewOperation::UpdateRepresentation {
-            representation,
+        self.operations.push(ViewOperation::UpdateRepresentations {
+            representations,
             schema,
             branch: self.branch.clone(),
         });
