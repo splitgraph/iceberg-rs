@@ -28,7 +28,7 @@ impl<'view> Transaction<'view> {
         }
     }
     /// Update the schmema of the view
-    pub fn update_representation(
+    pub fn update_representations(
         mut self,
         representations: Vec<ViewRepresentation>,
         schema: StructType,
