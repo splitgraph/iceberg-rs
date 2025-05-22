@@ -168,21 +168,23 @@ impl Operation {
     }
 }
 
+#[cfg(test)]
 mod tests {
-    use super::upsert_representations;
     use iceberg_rust_spec::view_metadata::ViewRepresentation;
+
+    use crate::view::transaction::operation::upsert_representations;
 
     #[test]
     fn test_upsert_representations() {
         assert_eq!(
             upsert_representations(
-                &vec![
+                &[
                     ViewRepresentation::sql("a1", Some("a")),
-                    ViewRepresentation::sql("b1", Some("b")),
+                    ViewRepresentation::sql("b1", Some("b"))
                 ],
-                &vec![
+                &[
                     ViewRepresentation::sql("b2", Some("b")),
-                    ViewRepresentation::sql("c2", Some("c")),
+                    ViewRepresentation::sql("c2", Some("c"))
                 ]
             ),
             vec![
@@ -193,13 +195,13 @@ mod tests {
         );
         assert_eq!(
             upsert_representations(
-                &vec![
+                &[
                     ViewRepresentation::sql("a1", Some("a")),
-                    ViewRepresentation::sql("b1", Some("b")),
+                    ViewRepresentation::sql("b1", Some("b"))
                 ],
-                &vec![
+                &[
                     ViewRepresentation::sql("c2", Some("c")),
-                    ViewRepresentation::sql("a2", Some("a")),
+                    ViewRepresentation::sql("a2", Some("a"))
                 ]
             ),
             vec![
