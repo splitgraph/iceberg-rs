@@ -35,6 +35,46 @@ pub enum Operation {
     UpdateProperties(Vec<(String, String)>),
 }
 
+// Tries to preserve dialect order
+fn upsert_representation(
+    current_representations: &[ViewRepresentation],
+    new_representation: ViewRepresentation,
+) -> Vec<ViewRepresentation> {
+    let ViewRepresentation::Sql {
+        dialect: new_dialect,
+        ..
+    } = &new_representation;
+    let mut updated = false;
+    let mut representations: Vec<ViewRepresentation> = current_representations
+        .iter()
+        .map(
+            |current_representation @ ViewRepresentation::Sql { dialect, .. }| {
+                if dialect == new_dialect {
+                    updated = true;
+                    new_representation.clone()
+                } else {
+                    current_representation.clone()
+                }
+            },
+        )
+        .collect();
+    if !updated {
+        representations.push(new_representation);
+    }
+    representations
+}
+
+fn upsert_representations(
+    current_representations: &[ViewRepresentation],
+    new_representations: &[ViewRepresentation],
+) -> Vec<ViewRepresentation> {
+    let mut representations: Vec<ViewRepresentation> = current_representations.into();
+    for r in new_representations {
+        representations = upsert_representation(&representations, r.clone());
+    }
+    representations
+}
+
 impl Operation {
     /// Execute operation
     pub async fn execute<T: Materialization>(
@@ -72,7 +112,10 @@ impl Operation {
                         engine_name: None,
                         engine_version: None,
                     },
-                    representations,
+                    representations: upsert_representations(
+                        version.representations(),
+                        &representations,
+                    ),
                     default_catalog: version.default_catalog.clone(),
                     default_namespace: version.default_namespace.clone(),
                     timestamp_ms: SystemTime::now()
