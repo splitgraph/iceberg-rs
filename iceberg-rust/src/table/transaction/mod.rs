@@ -20,6 +20,7 @@ use std::collections::HashMap;
 use iceberg_rust_spec::spec::{manifest::DataFile, schema::Schema, snapshot::SnapshotReference};
 
 use crate::table::transaction::append::append_summary;
+use crate::table::transaction::operation::DataFileWithIncrement;
 use crate::{catalog::commit::CommitTable, error::Error, table::Table};
 
 use self::operation::Operation;
@@ -122,27 +123,33 @@ impl<'table> TableTransaction<'table> {
 
     /// Appends data files to the table, increasing the Data Sequence Number by a given amount
     ///
-    pub fn append_data_with_dsn_increment(mut self, files: Vec<DataFile>, dsn_increment: Option<u64>) -> Self {
+    pub fn append_data_with_dsn_increment(
+        mut self,
+        files: Vec<DataFile>,
+        dsn_increment: Option<u64>,
+    ) -> Self {
         let summary = append_summary(&files);
+        let files_with_increments: Vec<DataFileWithIncrement> = files
+            .into_iter()
+            .map(|f| DataFileWithIncrement {
+                data_file: f,
+                dsn_increment,
+            })
+            .collect();
 
         if let Some(ref mut operation) = self.operations[APPEND_INDEX] {
             if let Operation::Append {
-                data_files: old,
-                dsn_increment: old_dsn_increment,
-                ..
+                data_files: old, ..
             } = operation
             {
-                if dsn_increment == *old_dsn_increment {
-                    old.extend_from_slice(&files);
-                }
+                old.extend_from_slice(&files_with_increments);
             }
         } else {
             self.operations[APPEND_INDEX] = Some(Operation::Append {
                 branch: self.branch.clone(),
-                data_files: files,
+                data_files: files_with_increments,
                 delete_files: Vec::new(),
                 additional_summary: summary,
-                dsn_increment,
             });
         }
         self
@@ -172,27 +179,34 @@ impl<'table> TableTransaction<'table> {
 
     /// Appends delete files to the table, increasing the Data Sequence Number by a given amount
     ///
-    pub fn append_delete_with_dsn_increment(mut self, files: Vec<DataFile>, dsn_increment: Option<u64>) -> Self {
+    pub fn append_delete_with_dsn_increment(
+        mut self,
+        files: Vec<DataFile>,
+        dsn_increment: Option<u64>,
+    ) -> Self {
+        let files_with_increments: Vec<DataFileWithIncrement> = files
+            .into_iter()
+            .map(|f| DataFileWithIncrement {
+                data_file: f,
+                dsn_increment,
+            })
+            .collect();
         if let Some(ref mut operation) = self.operations[APPEND_INDEX] {
             if let Operation::Append {
                 branch: _,
                 data_files: _,
                 delete_files: old,
                 additional_summary: None,
-                dsn_increment: old_dsn_increment,
             } = operation
             {
-                if dsn_increment == *old_dsn_increment {
-                    old.extend_from_slice(&files);
-                }
+                old.extend_from_slice(&files_with_increments);
             }
         } else {
             self.operations[APPEND_INDEX] = Some(Operation::Append {
                 branch: self.branch.clone(),
                 data_files: Vec::new(),
-                delete_files: files,
+                delete_files: files_with_increments,
                 additional_summary: None,
-                dsn_increment,
             });
         }
         self
