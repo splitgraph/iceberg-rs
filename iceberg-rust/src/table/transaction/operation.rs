@@ -58,6 +58,7 @@ pub enum Operation {
         data_files: Vec<DataFile>,
         delete_files: Vec<DataFile>,
         additional_summary: Option<HashMap<String, String>>,
+        dsn_increment: Option<u64>,
     },
     // /// Quickly append new files to the table
     // NewFastAppend {
@@ -101,6 +102,7 @@ impl Operation {
                 data_files,
                 delete_files,
                 additional_summary,
+                dsn_increment,
             } => {
                 let old_snapshot = table_metadata.current_snapshot(branch.as_deref())?;
 
@@ -145,10 +147,16 @@ impl Operation {
                         .into_iter()
                         .chain(data_files.into_iter())
                         .map(|data_file| {
-                            ManifestEntry::builder()
+                            let mut builder = ManifestEntry::builder();
+                            builder
                                 .with_format_version(table_metadata.format_version)
                                 .with_status(Status::Added)
-                                .with_data_file(data_file)
+                                .with_data_file(data_file);
+                            if let Some(dsn_increment) = dsn_increment {
+                                builder.with_sequence_number(table_metadata.last_sequence_number + (dsn_increment as i64));
+                            }
+
+                            builder
                                 .build()
                                 .map_err(crate::spec::error::Error::from)
                                 .map_err(Error::from)

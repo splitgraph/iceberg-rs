@@ -108,6 +108,7 @@ impl<'view> Transaction<'view> {
                 data_files: old,
                 delete_files: _,
                 additional_summary: old_lineage,
+                dsn_increment: _,
             } = operation
             {
                 old.extend_from_slice(&files);
@@ -125,6 +126,7 @@ impl<'view> Transaction<'view> {
                     REFRESH_STATE.to_owned(),
                     refresh_state,
                 )])),
+                dsn_increment: None,
             });
         }
         Ok(self)
@@ -143,6 +145,7 @@ impl<'view> Transaction<'view> {
                 data_files: _,
                 delete_files: old,
                 additional_summary: old_lineage,
+                dsn_increment: _,
             } = operation
             {
                 old.extend_from_slice(&files);
@@ -160,6 +163,7 @@ impl<'view> Transaction<'view> {
                     REFRESH_STATE.to_owned(),
                     refresh_state,
                 )])),
+                dsn_increment: None,
             });
         }
         Ok(self)

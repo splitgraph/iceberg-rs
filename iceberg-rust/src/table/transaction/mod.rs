@@ -116,15 +116,25 @@ impl<'table> TableTransaction<'table> {
     ///     .commit()
     ///     .await?;
     /// ```
-    pub fn append_data(mut self, files: Vec<DataFile>) -> Self {
+    pub fn append_data(self, files: Vec<DataFile>) -> Self {
+        self.append_data_with_dsn_increment(files, None)
+    }
+
+    /// Appends data files to the table, increasing the Data Sequence Number by a given amount
+    ///
+    pub fn append_data_with_dsn_increment(mut self, files: Vec<DataFile>, dsn_increment: Option<u64>) -> Self {
         let summary = append_summary(&files);
 
         if let Some(ref mut operation) = self.operations[APPEND_INDEX] {
             if let Operation::Append {
-                data_files: old, ..
+                data_files: old,
+                dsn_increment: old_dsn_increment,
+                ..
             } = operation
             {
-                old.extend_from_slice(&files);
+                if dsn_increment == *old_dsn_increment {
+                    old.extend_from_slice(&files);
+                }
             }
         } else {
             self.operations[APPEND_INDEX] = Some(Operation::Append {
@@ -132,6 +142,7 @@ impl<'table> TableTransaction<'table> {
                 data_files: files,
                 delete_files: Vec::new(),
                 additional_summary: summary,
+                dsn_increment,
             });
         }
         self
@@ -155,16 +166,25 @@ impl<'table> TableTransaction<'table> {
     ///     .commit()
     ///     .await?;
     /// ```
-    pub fn append_delete(mut self, files: Vec<DataFile>) -> Self {
+    pub fn append_delete(self, files: Vec<DataFile>) -> Self {
+        self.append_delete_with_dsn_increment(files, None)
+    }
+
+    /// Appends delete files to the table, increasing the Data Sequence Number by a given amount
+    ///
+    pub fn append_delete_with_dsn_increment(mut self, files: Vec<DataFile>, dsn_increment: Option<u64>) -> Self {
         if let Some(ref mut operation) = self.operations[APPEND_INDEX] {
             if let Operation::Append {
                 branch: _,
                 data_files: _,
                 delete_files: old,
                 additional_summary: None,
+                dsn_increment: old_dsn_increment,
             } = operation
             {
-                old.extend_from_slice(&files);
+                if dsn_increment == *old_dsn_increment {
+                    old.extend_from_slice(&files);
+                }
             }
         } else {
             self.operations[APPEND_INDEX] = Some(Operation::Append {
@@ -172,6 +192,7 @@ impl<'table> TableTransaction<'table> {
                 data_files: Vec::new(),
                 delete_files: files,
                 additional_summary: None,
+                dsn_increment,
             });
         }
         self
