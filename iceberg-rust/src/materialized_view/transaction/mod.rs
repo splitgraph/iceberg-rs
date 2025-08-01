@@ -14,7 +14,10 @@ use crate::{
     error::Error,
     table::{
         delete_all_table_files,
-        transaction::{operation::Operation as TableOperation, APPEND_INDEX, REPLACE_INDEX},
+        transaction::{
+            operation::{DataFileWithIncrement, Operation as TableOperation},
+            APPEND_INDEX, REPLACE_INDEX,
+        },
     },
     view::transaction::operation::Operation as ViewOperation,
 };
@@ -102,6 +105,13 @@ impl<'view> Transaction<'view> {
         refresh_state: RefreshState,
     ) -> Result<Self, Error> {
         let refresh_state = serde_json::to_string(&refresh_state)?;
+        let files_with_increments: Vec<DataFileWithIncrement> = files
+            .into_iter()
+            .map(|f| DataFileWithIncrement {
+                data_file: f,
+                dsn_increment: None,
+            })
+            .collect();
         if let Some(ref mut operation) = self.storage_table_operations[APPEND_INDEX] {
             if let TableOperation::Append {
                 branch: _,
@@ -110,7 +120,7 @@ impl<'view> Transaction<'view> {
                 additional_summary: old_lineage,
             } = operation
             {
-                old.extend_from_slice(&files);
+                old.extend_from_slice(&files_with_increments);
                 *old_lineage = Some(HashMap::from_iter(vec![(
                     REFRESH_STATE.to_owned(),
                     refresh_state.clone(),
@@ -119,7 +129,7 @@ impl<'view> Transaction<'view> {
         } else {
             self.storage_table_operations[APPEND_INDEX] = Some(TableOperation::Append {
                 branch: self.branch.clone(),
-                data_files: files,
+                data_files: files_with_increments,
                 delete_files: Vec::new(),
                 additional_summary: Some(HashMap::from_iter(vec![(
                     REFRESH_STATE.to_owned(),
@@ -137,6 +147,13 @@ impl<'view> Transaction<'view> {
         refresh_state: RefreshState,
     ) -> Result<Self, Error> {
         let refresh_state = serde_json::to_string(&refresh_state)?;
+        let files_with_increments: Vec<DataFileWithIncrement> = files
+            .into_iter()
+            .map(|f| DataFileWithIncrement {
+                data_file: f,
+                dsn_increment: None,
+            })
+            .collect();
         if let Some(ref mut operation) = self.storage_table_operations[APPEND_INDEX] {
             if let TableOperation::Append {
                 branch: _,
@@ -145,7 +162,7 @@ impl<'view> Transaction<'view> {
                 additional_summary: old_lineage,
             } = operation
             {
-                old.extend_from_slice(&files);
+                old.extend_from_slice(&files_with_increments);
                 *old_lineage = Some(HashMap::from_iter(vec![(
                     REFRESH_STATE.to_owned(),
                     refresh_state.clone(),
@@ -155,7 +172,7 @@ impl<'view> Transaction<'view> {
             self.storage_table_operations[APPEND_INDEX] = Some(TableOperation::Append {
                 branch: self.branch.clone(),
                 data_files: Vec::new(),
-                delete_files: files,
+                delete_files: files_with_increments,
                 additional_summary: Some(HashMap::from_iter(vec![(
                     REFRESH_STATE.to_owned(),
                     refresh_state,

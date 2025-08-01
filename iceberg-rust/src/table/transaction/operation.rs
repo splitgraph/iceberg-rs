@@ -37,6 +37,13 @@ use super::append::split_datafiles;
 /// The target number of datafiles per manifest is dynamic, but we don't want to go below this number.
 static MIN_DATAFILES_PER_MANIFEST: usize = 4;
 
+#[derive(Debug, Clone)]
+///Table operations
+pub struct DataFileWithIncrement {
+    pub data_file: DataFile,
+    pub dsn_increment: Option<u64>,
+}
+
 #[derive(Debug)]
 ///Table operations
 pub enum Operation {
@@ -55,8 +62,8 @@ pub enum Operation {
     /// Append new files to the table
     Append {
         branch: Option<String>,
-        data_files: Vec<DataFile>,
-        delete_files: Vec<DataFile>,
+        data_files: Vec<DataFileWithIncrement>,
+        delete_files: Vec<DataFileWithIncrement>,
         additional_summary: Option<HashMap<String, String>>,
     },
     // /// Quickly append new files to the table
@@ -116,7 +123,10 @@ impl Operation {
                     return Ok((None, Vec::new()));
                 }
 
-                let data_files_iter = delete_files.iter().chain(data_files.iter());
+                let data_files_iter = delete_files
+                    .iter()
+                    .chain(data_files.iter())
+                    .map(|f| &f.data_file);
 
                 let manifest_list_writer = if let Some(manifest_list_bytes) =
                     prefetch_manifest_list(old_snapshot, &object_store)
@@ -144,11 +154,19 @@ impl Operation {
                     delete_files
                         .into_iter()
                         .chain(data_files.into_iter())
-                        .map(|data_file| {
-                            ManifestEntry::builder()
+                        .map(|dfi| {
+                            let mut builder = ManifestEntry::builder();
+                            builder
                                 .with_format_version(table_metadata.format_version)
                                 .with_status(Status::Added)
-                                .with_data_file(data_file)
+                                .with_data_file(dfi.data_file);
+                            if let Some(dsn_increment) = dfi.dsn_increment {
+                                builder.with_sequence_number(
+                                    table_metadata.last_sequence_number + (dsn_increment as i64),
+                                );
+                            }
+
+                            builder
                                 .build()
                                 .map_err(crate::spec::error::Error::from)
                                 .map_err(Error::from)
